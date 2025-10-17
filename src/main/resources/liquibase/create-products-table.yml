@@ -1,0 +1,76 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-products-table
+      author: xenovar
+      changes:
+        - createTable:
+            tableName: products
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: slug
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: name
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: price
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: VARCHAR(3)
+                  defaultValue: "IGC"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tags
+                  type: TEXT[]
+                  constraints:
+                    nullable: true
+        - createIndex:
+            indexName: idx_products_slug
+            tableName: products
+            unique: true
+            columns:
+              - column:
+                  name: slug
+        - createIndex:
+            indexName: idx_products_category
+            tableName: products
+            columns:
+              - column:
+                  name: category
+        - createIndex:
+            indexName: idx_products_price
+            tableName: products
+            columns:
+              - column:
+                  name: price
