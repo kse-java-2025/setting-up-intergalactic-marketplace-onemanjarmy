@@ -1,0 +1,400 @@
+openapi: 3.0.0
+info:
+  title: Cosmo Cats Intergalactic Marketplace API
+  description: API for managing products in an intergalactic marketplace for cosmic cats
+  version: 1.2.0
+paths:
+  /api/v1/products:
+    get:
+      summary: Retrieve a paginated, filterable, and sortable list of products
+      tags:
+        - Products
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: Page number to retrieve (starts from 1)
+        - in: query
+          name: size
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Number of products per page (max 100)
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [name, -name, price, -price, quantity, -quantity]
+          description: Sort by field. Use '-' prefix for descending (e.g., `-price`)
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by product category
+        - in: query
+          name: minPrice
+          schema:
+            type: number
+            format: float
+            minimum: 0
+          description: Minimum price for filtering
+        - in: query
+          name: maxPrice
+          schema:
+            type: number
+            format: float
+            minimum: 0
+          description: Maximum price for filtering
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search term to match against product name or description
+        - in: query
+          name: currency
+          schema:
+            type: string
+            default: "IGC"
+          description: Preferred currency code for pricing
+      responses:
+        '200':
+          description: A paginated list of products matching the criteria
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProductListDto'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+    post:
+      summary: Create a new product for the marketplace
+      tags:
+        - Products
+      requestBody:
+        description: Information required to create a new product
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateDto'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDto'
+              examples:
+                success:
+                  value:
+                    slug: "space-tuna-can"
+                    name: "Space Tuna Can"
+                    description: "Tuna sourced from the edges of the galaxy."
+                    price: 12.00
+                    quantity: 30
+                    category: "Food"
+                    tags: ["space", "tuna", "food"]
+                    currency: "IGC"
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                invalid_input:
+                  value:
+                    status: "400"
+                    errors:
+                      - fieldName: "price"
+                        reason: "Price must be greater than zero"
+                      - fieldName: "name"
+                        reason: "Name is required"
+
+  /api/v1/products/{slug}:
+    get:
+      summary: Retrieve a product by its unique slug
+      tags:
+        - Products
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+          description: Slug of the product to retrieve
+        - in: query
+          name: currency
+          schema:
+            type: string
+            default: "IGC"
+          description: Preferred currency code for pricing (default is InterGalactic Credits - IGC)
+      responses:
+        '200':
+          description: The product details for the given slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDto'
+        '404':
+          description: Product not found with the given slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update an existing product by slug
+      tags:
+        - Products
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+          description: Slug of the product to update
+        - in: query
+          name: currency
+          schema:
+            type: string
+            default: "IGC"
+          description: Currency code in which the price is specified (default is IGC)
+      requestBody:
+        description: Product data to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateDto'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDto'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '404':
+          description: Product not found with the given slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a product from the marketplace by its unique slug
+      tags:
+        - Products
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+          description: Slug of the product to delete
+      responses:
+        '204':
+          description: Product successfully deleted
+        '404':
+          description: Product not found with the given slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ProductDto:
+      type: object
+      description: Represents a product in the Cosmo Cats marketplace
+      properties:
+        slug:
+          type: string
+          description: Unique slug of the product (URL-friendly identifier)
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+          description: Name of the product
+        description:
+          type: string
+          maxLength: 500
+          description: Detailed description of the product
+        price:
+          type: number
+          format: float
+          minimum: 0.01
+          maximum: 1000
+          description: Price of the product in the requested currency (must be greater than zero)
+        quantity:
+          type: integer
+          minimum: 0
+          description: Available quantity of the product in the marketplace
+        category:
+          type: string
+          description: Category of the product (e.g., "Toys", "Food")
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with the product
+        currency:
+          type: string
+          description: The currency code used for the price
+      required:
+        - name
+        - price
+        - quantity
+        - category
+
+    ProductCreateDto:
+      type: object
+      description: Data required to create a new product
+      properties:
+        name:
+          type: string
+          maxLength: 150
+          description: Name of the product
+        description:
+          type: string
+          maxLength: 500
+          description: Detailed description of the product
+        price:
+          type: number
+          format: float
+          minimum: 0.01
+          maximum: 1000
+          description: Price of the product in intergalactic credits (must be greater than zero)
+        quantity:
+          type: integer
+          minimum: 0
+          description: Available quantity of the product in the marketplace
+        category:
+          type: string
+          description: Category of the product (e.g., "Toys", "Food")
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with the product
+      required:
+        - name
+        - price
+        - quantity
+        - category
+
+    ProductUpdateDto:
+      type: object
+      description: Data required to update an existing product
+      properties:
+        name:
+          type: string
+          maxLength: 150
+          description: Name of the product
+        description:
+          type: string
+          maxLength: 500
+          description: Detailed description of the product
+        price:
+          type: number
+          format: float
+          minimum: 0.01
+          maximum: 1000
+          description: Price of the product in intergalactic credits (must be greater than zero)
+        quantity:
+          type: integer
+          minimum: 0
+          description: Available quantity of the product in the marketplace
+        category:
+          type: string
+          description: Category of the product (e.g., "Toys", "Food")
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags associated with the product
+      required:
+        - name
+        - price
+        - quantity
+        - category
+
+    PaginatedProductListDto:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductDto'
+        totalItems:
+          type: integer
+          example: 125
+          description: Total number of products across all pages
+        totalPages:
+          type: integer
+          example: 13
+          description: Total number of pages
+        currentPage:
+          type: integer
+          example: 2
+          description: The current page number
+        pageSize:
+          type: integer
+          example: 10
+          description: The number of products per page
+
+    ErrorResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          description: URI reference identifying the error type
+        title:
+          type: string
+          description: A brief, human-readable description of the error
+        status:
+          type: integer
+          description: The HTTP status code for the error
+        detail:
+          type: string
+          description: A detailed explanation of the error
+
+    ValidationError:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "400"
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParamsViolationDetails'
+
+    ParamsViolationDetails:
+      type: object
+      properties:
+        fieldName:
+          type: string
+          description: The field where the validation error occurred
+        reason:
+          type: string
+          description: The reason for the validation error
+servers:
+  # Added by API Auto Mocking Plugin
+  - description: SwaggerHub API Auto Mocking
+    url: https://virtserver.swaggerhub.com/meorg-f9b/SE670task1.1/1.2.0
