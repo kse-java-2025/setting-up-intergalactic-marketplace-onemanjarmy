@@ -3,6 +3,7 @@ package com.odanylchuk.cosmocatsmarketplace.service;
 import com.odanylchuk.cosmocatsmarketplace.domain.entity.Category;
 import com.odanylchuk.cosmocatsmarketplace.domain.entity.Product;
 import com.odanylchuk.cosmocatsmarketplace.dto.*;
+import com.odanylchuk.cosmocatsmarketplace.exception.ResourceMovedPermanentlyException;
 import com.odanylchuk.cosmocatsmarketplace.exception.ResourceNotFoundException;
 import com.odanylchuk.cosmocatsmarketplace.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
@@ -142,13 +143,27 @@ public class ProductServiceImpl implements ProductService {
     public ProductDto updateProduct(String slug, ProductUpdateDto updateDto, String currency) {
         Product existingProduct = findBySlugOrThrow(slug);
 
+        String newSlug = generateSlug(updateDto.getName());
+        List<String> slugHistory = new ArrayList<>(existingProduct.getSlugHistory());
+
+        boolean nameChanged = !updateDto.getName().equals(existingProduct.getName());
+        if (nameChanged) {
+            newSlug = generateSlug(updateDto.getName());
+            if (!slugHistory.contains(existingProduct.getSlug())) {
+                slugHistory.add(existingProduct.getSlug());
+            }
+        }
+
         Product updatedProduct = productMapper.applyUpdateFromDto(updateDto, existingProduct);
 
         updatedProduct = updatedProduct.toBuilder()
+                .slug(newSlug)
+                .slugHistory(slugHistory)
                 .category(findCategoryByName(updateDto.getCategory()))
                 .build();
 
-        productStore.put(slug, updatedProduct);
+        productStore.remove(slug);
+        productStore.put(newSlug, updatedProduct);
 
         return toDtoWithCurrency(updatedProduct, currency);
     }
@@ -165,10 +180,17 @@ public class ProductServiceImpl implements ProductService {
 
     private Product findBySlugOrThrow(String slug) {
         Product product = productStore.get(slug);
-        if (product == null) {
-            throw new ResourceNotFoundException("Product", "slug", slug);
+        if (product != null) {
+            return product;
         }
-        return product;
+
+        for (Product p : productStore.values()) {
+            if (p.getSlugHistory().contains(slug)) {
+                throw new ResourceMovedPermanentlyException(p.getSlug());
+            }
+        }
+
+        throw new ResourceNotFoundException("Product", "slug", slug);
     }
 
     /**

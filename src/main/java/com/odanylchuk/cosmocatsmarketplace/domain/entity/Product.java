@@ -6,7 +6,9 @@ import lombok.Value;
 import lombok.Builder;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Value
@@ -15,6 +17,9 @@ public class Product {
 
     Long id;
     String slug;
+
+    @Builder.Default
+    List<String> slugHistory = new ArrayList<>();
 
     @NotNull(message = "Product name is required")
     @Size(min = 3, max = 150, message = "Product name must be between 3 and 150 characters")
@@ -39,5 +44,5 @@ public class Product {
     Set<String> tags = new HashSet<>();
 
     @Builder.Default
-    String currency = "IGC"; // InterGalactic Credits
+    String currency = "IGC";
 }

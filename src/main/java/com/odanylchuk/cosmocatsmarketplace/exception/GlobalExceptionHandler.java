@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,6 +72,25 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .headers(headers)
                 .body(validationError);
+    }
+
+    @ExceptionHandler(ResourceMovedPermanentlyException.class)
+    public ResponseEntity<Void> handleResourceMovedPermanentlyException(
+            ResourceMovedPermanentlyException ex, HttpServletRequest request) {
+
+        String newPath = "/api/v1/products/" + ex.getNewSlug();
+
+        if (request.getQueryString() != null) {
+            newPath += "?" + request.getQueryString();
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(URI.create(newPath));
+
+        return ResponseEntity
+                .status(HttpStatus.MOVED_PERMANENTLY)
+                .headers(headers)
+                .build();
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
